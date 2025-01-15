@@ -1,0 +1,235 @@
+<html>
+
+<head>
+	<title>R-translator</title>
+	<meta charset="utf-8">
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=650,  user-scalable=no">
+	<link rel="shortcut icon" href="#" />
+
+	<link href="static/mdi_font/css/materialdesignicons.min.css" rel="stylesheet">
+	<link href="static/vuetify.min.css" rel="stylesheet">
+	<script src="static/vue.js"></script>
+	<script src="static/vuetify.min.js"></script>
+	<script src="wd_sdk.js"></script>
+	<style>
+		div {
+
+			transition: all 0.3s;
+		}
+
+		.v-sheet.v-card {
+			margin: 20px;
+			padding: 10px;
+		}
+
+		.logo-center {
+			left: calc(50% - 140px);
+			width: 260px;
+			font-size: 4em;
+			padding-top: 2.5em;
+			padding-bottom: 0.8em;
+			position: relative;
+		}
+
+		.logo-left {
+			left: 20px;
+			width: 100%;
+			font-size: xx-large;
+			position: relative;
+		}
+
+		[v-cloak],
+		.v-messages {
+			display: none;
+		}
+
+		.v-application--wrap {
+			display: unset;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="app" v-cloak>
+		<v-app>
+			<div :class="'logo-left'"><b style="color: blue;"></b><b>R-translator</b></div>
+
+
+			<v-card elevation="2">
+				<v-row>
+					<v-col cols="6">
+						<v-checkbox v-model="b逐段模式" label="逐段翻译" style="
+						display: inline-block;
+						margin-top: 0;
+						padding: 9px;
+					"></v-checkbox>
+					</v-col>
+					<v-col cols="6" style="text-align: right;">To
+						<v-btn color="blue" dark size="x-large" @click="f翻译('中文')" :loading="loading">
+							中文
+						</v-btn>
+						<v-btn color="blue" dark size="x-large" @click="f翻译('English')" :loading="loading">
+							English
+						</v-btn>
+						<v-btn color="blue" dark size="x-large" @click="f翻译('日本語')" :loading="loading">
+							日本語
+						</v-btn>
+						<v-btn color="blue" dark size="x-large" @click="f翻译('Русский')" :loading="loading">
+							Русский
+						</v-btn>
+					</v-col>
+				</v-row>
+				<v-divider></v-divider>
+				<v-card-text>
+
+					<v-row>
+						<v-col cols="6">
+							<v-textarea autofocus v-model="s输入" label="输入" rows="10" hide-details="auto"></v-textarea>
+						</v-col>
+						<v-col cols="6">
+							<v-textarea v-model="s输出" label="输出" rows="10" hide-details="auto"></v-textarea>
+						</v-col>
+					</v-row>
+				</v-card-text>
+				<v-card-action style="text-align: right;display: block;">
+					<v-btn color="blue" dark size="x-large" @click="f复制正文()">
+						复制正文
+					</v-btn>
+					<v-btn color="blue" dark size="x-large" @click="f终止()" v-if="loading">
+						终止
+					</v-btn>
+				</v-card-action>
+			</v-card>
+			<v-card elevation="2">
+				翻译规则
+				<v-divider></v-divider>
+				<v-card-text>
+
+					<v-data-table :headers=" [{ text: '术语', value: '术语', sortable: true, },
+					{ text: '译文', value: '译文', sortable: true, },
+					{ text: '删除', value: '功能', sortable: false, }
+					]" :items="l翻译规则" :items-per-page="2000" hide-default-footer style="margin: 10px;">
+						<template v-slot:item.术语="{ item }">
+							<input v-model="item.术语" @change="保存()"></input>
+						</template>
+						</template>
+						<template v-slot:item.译文="{ item }">
+							<input v-model="item.译文" @change="保存()"></input>
+						</template>
+						</template>
+						<template v-slot:item.功能="{ item }">
+							<v-icon large text @click="删除 (item)">mdi-delete</v-icon>
+						</template>
+					</v-data-table>
+				</v-card-text>
+			</v-card>
+			<v-snackbar v-model="b显示提示文本" :timeout="3000" style="white-space: pre-line">{{s提示文本}}</v-snackbar>
+		</v-app>
+	</div>
+	<script>
+
+		保存 = () => {
+			if (app.l翻译规则.length == 0) {
+
+				app.l翻译规则.push({ 术语: '', 译文: '' })
+			} else if (app.l翻译规则[app.l翻译规则.length - 1].术语 != '')
+				app.l翻译规则.push({ 术语: '', 译文: '' })
+			localStorage["l翻译规则"] = JSON.stringify(app.l翻译规则)
+		}
+		删除 = (item) => {
+			if (confirm("确认删除[" + item.术语 + "]?")) {
+				app.l翻译规则.splice(app.l翻译规则.indexOf(item), 1)
+				保存()
+			}
+		}
+		app = new Vue({
+			el: '#app',
+			vuetify: new Vuetify(),
+			data: () => ({
+				s输入: "",
+				s输出: "",
+				loading: false,
+				// 是否显示snackbar
+				b显示提示文本: false,
+				// snackbar的文本
+				s提示文本: "",
+				temperature: 0.1,
+				top_p: 0.1,
+				max_length: 4000,
+				llm_type: "",
+				//显示对话框
+				show_dialog: false,
+				//对话框标题
+				dialog_title: "",
+				b逐段模式: false,
+				l翻译规则: JSON.parse(localStorage["l翻译规则"] || "[{}]")
+			}),
+			methods: {
+			},
+			watch: {
+			}
+		})
+		// 		make_table = () => {
+		// 			let rules = app.l翻译规则.filter(i => i.术语 && i.译文)
+		// 			if (rules.length > 0) {
+		// 				return `\n注意以下翻译规则翻译术语\n| 术语 | 译文 |
+		// | --- | --- |`+ '\n' + rules.map(i => `| ${i.术语} | ${i.译文} |`).join('\n')
+		// 			}
+		// 			return ''
+		// 		}
+		make_prompt = (input, old, system = '') => {
+			let prompt = ''
+			if (system != '') {
+				prompt += `Instruction: ${system}\n\n`
+				return prompt +
+					`Input: ${input}\n\nResponse: ${old}`
+			}
+			return prompt +
+				`User: ${input}\n\nAssistant: ${old}`
+		}
+		f翻译 = async (lang) => {
+			let input = app.s输入
+			let rules = app.l翻译规则.filter(i => i.术语 && i.译文)
+			rules.forEach(i => {
+				input = input.replaceAll(i.术语, i.译文)
+			})
+			let prompt = make_prompt(input, `${lang}:\n`, `翻译成${lang}`)
+			app.loading = true
+			if (app.b逐段模式) {
+				inputs = input.split('\n')
+				app.s输出 = ''
+				for (input of inputs) {
+					let prompt = `Chinese: ${input}\n\n${lang}: `//Instruction: 翻译成${lang}\n\n
+					s输出 = app.s输出
+					await send_prompt(prompt,
+						['\n', '\n\n'], (s) => {
+							app.s输出 = s输出 + s
+						})
+					app.s输出 += '\n'
+				}
+			} else {
+				await send_prompt(prompt,
+					['\n\nUser: ', '\n\nQuestion:', '\n\nQ:', '\n\nChinese:',], (s) => {
+						app.s输出 = s
+					})
+			}
+			app.loading = false
+		}
+		f复制正文 = async () => {
+			copy(app.s输出)
+		}
+		f终止 = async () => {
+			app.loading = false
+			controller.abort()
+		}
+		alert = (text) => {
+			app.s提示文本 = text; //.replace(/\n/g,"<br>")
+			app.b显示提示文本 = true;
+		}
+	</script>
+</body>
+
+</html>
