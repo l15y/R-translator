@@ -4,7 +4,6 @@
 
 A web-based translation application built with Vue.js and Vuetify.
 Using AI00's API.
-https://pan.baidu.com/s/1lKIX0_4FutRbu3yx6p17Zw?pwd=7e2z
 ![](1.png)
 ## Features
 
@@ -16,6 +15,10 @@ https://pan.baidu.com/s/1lKIX0_4FutRbu3yx6p17Zw?pwd=7e2z
 - Responsive web interface
 
 ## Usage
+
+To use with AI00:
+Copy `ai00-server.exe` and  its dependencies  to the repo's root, and run `run.bat`.
+Or directly download from: https://pan.baidu.com/s/1lKIX0_4FutRbu3yx6p17Zw?pwd=7e2z
 
 1. Enter text in the left textarea
 2. Select target language:

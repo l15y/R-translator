@@ -14,6 +14,10 @@
 
 ## 使用方法
 
+使用AI00推理方式：
+将 'ai00-server.exe' 及其依赖文件复制到库的根目录，然后运行 'run.bat'。
+或直接从以下位置下载：https://pan.baidu.com/s/1lKIX0_4FutRbu3yx6p17Zw?pwd=7e2z
+
 1. 在左侧文本框中输入文本
 2. 选择目标语言：
    - 中文
