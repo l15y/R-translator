@@ -3,63 +3,44 @@ llm_server = '/api/oai/chat/completions'
 // llm_server = 'https://mobius.sea-group.org/v1/chat/completions'
 // llm_server = '//127.0.0.1:8000/v1/chat/completions'
 chat_names = { "user": "User", "assistant": "Assistant" }
-send_raw = async (prompt, prompt2, QA_history, onmessage = alert, args = {}) => {
-    const res = await fetch(llm_server + "", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(Object.assign({
-            max_tokens: app.max_length || 1000,
-            messages: QA_history.concat([{ role: "user", content: prompt }]),
-            stream: true,
-            "names": chat_names,
-            "stop": ["User:", "\n\n", "Assistant:", "User:"],
-            "sampler_override": {
-                "type": "Nucleus",
-                "top_p": app.top_p || 0.5,
-                "top_k": 128,
-                "temperature": app.temperature || 1,
-                "presence_penalty": 0.3,
-                "frequency_penalty": 0.3, "penalty": 400, "penalty_decay": 0.99654026
-            }
+templates = {
+    eos: "\n\n",
+    user: "User: ",
+    assistant: "Assistant: ",
+    system: "System: ",
+    skip_think_prompt: "",
+    begin_think_prompt: "<think>\n",
+}
 
-        }, args)),
-        // signal: controller.signal
-    });
-    let result = ''
-    const decoder = new TextDecoder();
-    const reader = res.body.getReader();
-    const readChunk = async () => {
-        return reader.read().then(async ({ value, done }) => {
-            value = decoder.decode(value);
-            let chunks = value.match(/[^\n]+/g);
-            if (!chunks) return readChunk();
-            for (let i = 0; i < chunks.length; i++) {
-                let chunk = chunks[i];
-                chunk = chunk.replace(/^data:\s*/, '').replace(/\r$/, '')
-                if (chunk) {
-                    try {
+templates.stops = [templates.eos + templates.user, templates.eos + templates.assistant,templates.eos]
 
-                        if (chunk == '[DONE]') return
-                        let payload = JSON.parse(chunk);
-                        let content = payload.choices[0].delta.content;
-                        if (content) {
-                            result += content
-                            onmessage(result)
-                        }
-                        if (payload.choices[0].finish_reason == "stop") return
-                    } catch {
+make_prompt = (input, old = '', system = '', functions = []) => {
+    let prompt = ''
+    if (functions.length > 0) {
+        if (system != '') system += '\n\n'
+        system += `## 你拥有如下工具：
 
-                    }
-                }
-
-            }
-            return await readChunk();
-        });
+        ${JSON.stringify(functions).replaceAll('\\"', '"')}
+        
+        ## 你可以在回复中插入零次、一次或多次以下命令以调用工具：
+        
+        ✿FUNCTION✿: 工具名称，必须是[{tool_names}]之一。
+        ✿ARGS✿: 工具输入
+        ✿RESULT✿: 工具结果
+        ✿RETURN✿: 根据工具结果进行回复`
     }
-    await readChunk()
-    return result
+    if (system != '') {
+        prompt += templates.system + system + templates.eos
+    }
+    return prompt + templates.user + input + templates.eos + templates.assistant + old
+}
+
+
+send_raw = async (prompt, prompt2, history, on_llm_message = alert, args = {}) => {
+    history_str = history.map(i => templates[i.role.toLowerCase()] + i.content + templates.eos).join("")
+    return send_prompt(history_str + make_prompt(prompt, args.old ? args.old : ""), [templates.eos + templates.user, templates.eos + templates.assistant,],
+        on_llm_message,
+        args = args)
 }
 send_prompt = async (prompt, stop, onmessage = alert, args = {}) => {
     controller = new AbortController()

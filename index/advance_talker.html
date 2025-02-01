@@ -1,0 +1,215 @@
+<html>
+
+<head>
+	<title></title>
+	<meta charset="utf-8">
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="mobile-web-app-capable" content="yes" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta name="viewport" content="width=450,  user-scalable=no">
+	<link rel="shortcut icon" href="#" />
+
+	<link href="static/mdi_font/css/materialdesignicons.min.css" rel="stylesheet">
+	<link href="static/vuetify.min.css" rel="stylesheet">
+	<script src="static/vue.min.js"></script>
+	<script src="static/vuetify.min.js"></script>
+	<script src="static/markdown-it.min.js"></script>
+	<style>
+		div {
+			transition: all 0.3s;
+		}
+
+
+		.v-sheet.v-card {
+			margin: 20px;
+			padding: 10px;
+		}
+
+		.logo-center {
+			left: calc(50% - 140px);
+			width: 260px;
+			font-size: 4em;
+			padding-top: 2em;
+			padding-bottom: 0.8em;
+			position: relative;
+		}
+
+		.logo-left {
+			left: 20px;
+			width: 100%;
+			font-size: xx-large;
+			position: relative;
+		}
+
+		[v-cloak] {
+			display: none;
+		}
+
+		.v-application--wrap {
+			display: unset;
+		}
+
+		.v-application p {
+			margin-bottom: 0;
+		}
+
+		h3 {
+			margin-top: 0.5em;
+		}
+
+		.theme--light.v-application code {
+			background-color: #00000030;
+			color: #000;
+			font-family: system-ui;
+		}
+
+		.theme--light.v-card>.v-card__text {
+			color: #000000a8;
+		}
+
+		.theme--light.v-card>.v-card__text h3 {
+			color: #000;
+		}
+
+		code {
+			padding: unset !important;
+			white-space: pre-wrap;
+			word-wrap: break-word;
+		}
+	</style>
+</head>
+
+<body>
+	<div id="app" v-cloak>
+		<v-app>
+			<div class="logo-left"><b style="color: blue;"></b><b>{{title}}</b></div>
+			<v-card elevation="2">
+				<v-row class="input-box">
+					<v-col cols="12">
+						<v-text-field autofocus v-model="s问题" label="输入问题" hide-details="auto" clearable></v-text-field>
+					</v-col>
+					<v-col cols="12">
+						<v-textarea v-model="s问题背景" label="问题背景" placeholder="问题背景留空自动生成" hide-details="auto" clearable rows="3" :auto-grow="!loading"></v-textarea>
+					</v-col>
+					<v-col cols="12">
+						<v-textarea counter dense v-model="s隐含条件" label="隐含条件" placeholder="隐含条件留空自动生成" hide-details="auto" clearable :auto-grow="!loading"
+							rows="3"></v-textarea>
+					</v-col>
+				</v-row>
+
+				<v-btn color="blue" dark size="x-large" @click="f回答问题()" :loading="loading">
+					提问
+				</v-btn>
+				<v-btn color="blue" dark size="x-large" @click="f终止()" v-if="loading">
+					终止
+				</v-btn>
+			</v-card>
+
+			<v-card elevation="2" v-if="s输出">
+				<v-card-text>
+					<div v-html="md2html(s输出)" style="margin: auto;font-size: 2em;line-height: 1.5em;"></div>
+				</v-card-text>
+			</v-card>
+
+
+		</v-app>
+	</div>
+	<script>
+
+		let md = new markdownit();
+		md.disable(['link', 'image'])
+		app = new Vue({
+			el: '#app',
+			vuetify: new Vuetify(),
+			data: () => ({
+				title: '',
+				s问题: "",
+				s输出: "",
+				s问题背景: "",
+				s隐含条件: "",
+				loading: false,
+				temperature: 0.5,
+				top_p: 0.5,
+				max_length: 20000,
+			}),
+			methods: {
+				md2html: (conent) => {
+					// return conent
+					conent = String(conent);
+					let md = new markdownit();
+					// md.disable(['link', 'image'])
+					return md.render(conent.replace("<think>", '```think').replace("</think>", '```')).replace(/<a /g, '<a target="_blank"').replace(/[\r\n]+/g, "\n")
+				},
+			},
+			watch: {
+			}
+		})
+		app.title = document.title = '扁平思维链'
+		f回答问题 = async (old = '存在这些话题：\`') => {
+			app.s问题 = app.s问题.replace(/ +/g, ' ').replace(/[\r\n]+/g, '\n').replace(/^[\n\s\t]+/, '').replace(/[\n\s\t]+$/, '')
+			app.loading = true
+			if (app.s问题背景 == null || app.s问题背景.length == 0) {
+				let prompt = make_prompt('问题: ' + app.s问题, templates.skip_think_prompt + '问题背景:\n',//
+					`根据问题，简要猜测问题背景`
+				)
+				console.log(prompt)
+				await send_prompt(prompt + "1. ", templates.stops.concat(['\n\n']), (s) => { app.s问题背景 = "1. " + s })
+			}
+			if (app.s隐含条件 == null || app.s隐含条件.length == 0) {
+				let prompt = make_prompt('问题: ' + app.s问题 + '\n问题背景: ' + app.s问题背景, templates.skip_think_prompt + '问题隐含条件:\n',//
+					`根据问题，猜测问题隐含条件`
+				)
+				console.log(prompt)
+				await send_prompt(prompt + "1. ", templates.stops.concat(['\n\n']), (s) => { app.s隐含条件 = "1. " + s })
+			}
+			let prompt = make_prompt('问题: ' + app.s问题 + '\n问题背景: ' + app.s问题背景 + '\n隐含条件: ' + app.s隐含条件)
+			console.log(prompt)
+			await send_prompt(prompt + "", templates.stops, (s) => { app.s输出 = "" + s })
+			app.loading = false
+			// takeScreenshot()
+		}
+		f复制正文 = async (s) => {
+			copy(s)
+		}
+		f终止 = async () => {
+			app.loading = false
+			controller.abort()
+		}
+		alert = (text) => {
+			app.s提示文本 = text; //.replace(/\n/g,"<br>")
+			app.b显示提示文本 = true;
+		}
+		function takeScreenshot() {
+			var width = document.body.offsetWidth; //获取dom 宽度
+			var height = document.body.offsetHeight; //获取dom 高度
+			var canvas = document.createElement("canvas"); //创建一个canvas节点
+			var scale = 1; //定义任意放大倍数 支持小数
+			canvas.width = width * scale; //定义canvas 宽度 * 缩放
+			canvas.height = height * scale; //定义canvas高度 *缩放
+			canvas.getContext("2d").scale(scale, scale); //获取context,设置scale 
+			var opts = {
+				scale: scale, // 添加的scale 参数
+				canvas: canvas, //自定义 canvas
+				width: width, //dom 原始宽度
+				height: height
+			};
+			var context = canvas.getContext('2d');
+			context.mozImageSmoothingEnabled = false;
+			context.webkitImageSmoothingEnabled = false;
+			context.msImageSmoothingEnabled = false;
+			context.imageSmoothingEnabled = false;
+			html2canvas(document.body, opts).then(canvas => {
+
+				// 创建一个新的图像对象
+				const screenshotImage = new Image();
+
+				// 将 Canvas 中的图像数据赋给图像对象
+				screenshotImage.src = canvas.toDataURL();
+				document.write('<img src="' + screenshotImage.src + '" width="' + canvas.width + '" height="' + canvas.height + '"/>');
+			});
+		}
+	</script>
+	<script src="wd_sdk.js"></script>
+</body>
+
+</html>
