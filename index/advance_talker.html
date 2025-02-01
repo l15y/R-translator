@@ -89,11 +89,12 @@
 						<v-text-field autofocus v-model="s问题" label="输入问题" hide-details="auto" clearable></v-text-field>
 					</v-col>
 					<v-col cols="12">
-						<v-textarea v-model="s问题背景" label="问题背景" placeholder="问题背景留空自动生成" hide-details="auto" clearable rows="3" :auto-grow="!loading"></v-textarea>
+						<v-textarea v-model="s问题背景" label="问题背景" placeholder="问题背景留空自动生成" hide-details="auto" clearable
+							rows="3" :auto-grow="!loading"></v-textarea>
 					</v-col>
 					<v-col cols="12">
-						<v-textarea counter dense v-model="s隐含条件" label="隐含条件" placeholder="隐含条件留空自动生成" hide-details="auto" clearable :auto-grow="!loading"
-							rows="3"></v-textarea>
+						<v-textarea counter dense v-model="s隐含条件" label="隐含条件" placeholder="隐含条件留空自动生成"
+							hide-details="auto" clearable :auto-grow="!loading" rows="3"></v-textarea>
 					</v-col>
 				</v-row>
 
@@ -138,7 +139,7 @@
 					conent = String(conent);
 					let md = new markdownit();
 					// md.disable(['link', 'image'])
-					return md.render(conent.replace("<think>", '```think').replace("</think>", '```')).replace(/<a /g, '<a target="_blank"').replace(/[\r\n]+/g, "\n")
+					return md.render(conent.replace("<think>", '```think').replace("</think>", '```')).replace(/<a /g, '<a target="_blank"').replace(/[\r\n]+/g, "\n").replace(/[\r\n]+/g, "<br>")
 				},
 			},
 			watch: {
@@ -149,20 +150,17 @@
 			app.s问题 = app.s问题.replace(/ +/g, ' ').replace(/[\r\n]+/g, '\n').replace(/^[\n\s\t]+/, '').replace(/[\n\s\t]+$/, '')
 			app.loading = true
 			if (app.s问题背景 == null || app.s问题背景.length == 0) {
-				let prompt = make_prompt('问题: ' + app.s问题, templates.skip_think_prompt + '问题背景:\n',//
-					`根据问题，简要猜测问题背景`
+				let prompt = make_prompt(app.s问题, '<think>\n问题背景: '
 				)
 				console.log(prompt)
-				await send_prompt(prompt + "1. ", templates.stops.concat(['\n\n']), (s) => { app.s问题背景 = "1. " + s })
+				await send_prompt(prompt, templates.stops.concat(['\n', '</think>']), (s) => { app.s问题背景 = s })
 			}
 			if (app.s隐含条件 == null || app.s隐含条件.length == 0) {
-				let prompt = make_prompt('问题: ' + app.s问题 + '\n问题背景: ' + app.s问题背景, templates.skip_think_prompt + '问题隐含条件:\n',//
-					`根据问题，猜测问题隐含条件`
-				)
+				let prompt = make_prompt(app.s问题, '<think>\n问题背景: ' + app.s问题背景 + '\n隐含条件: ')
 				console.log(prompt)
-				await send_prompt(prompt + "1. ", templates.stops.concat(['\n\n']), (s) => { app.s隐含条件 = "1. " + s })
+				await send_prompt(prompt, templates.stops.concat(['\n\n', '</think>']), (s) => { app.s隐含条件 = s })
 			}
-			let prompt = make_prompt('问题: ' + app.s问题 + '\n问题背景: ' + app.s问题背景 + '\n隐含条件: ' + app.s隐含条件)
+			let prompt = make_prompt(app.s问题, '<think>\n问题背景: ' + app.s问题背景 + '\n隐含条件: ' + app.s隐含条件 + "</think>")
 			console.log(prompt)
 			await send_prompt(prompt + "", templates.stops, (s) => { app.s输出 = "" + s })
 			app.loading = false

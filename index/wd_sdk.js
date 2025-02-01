@@ -8,7 +8,7 @@ templates = {
     user: "User: ",
     assistant: "Assistant: ",
     system: "System: ",
-    skip_think_prompt: "",
+    skip_think_prompt: "\n<think>\n</think>",
     begin_think_prompt: "<think>\n",
 }
 
